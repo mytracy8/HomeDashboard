@@ -192,3 +192,155 @@ with col2:
                 df = pd.read_csv(csv_file)
 
             lat_col = df.columns[8]
+            lon_col = df.columns[9]
+            rain_col = df.columns[7]
+
+            causeway_bay_lat = 22.2803
+            causeway_bay_lon = 114.1849
+
+            df["distance"] = (
+                (df[lat_col] - causeway_bay_lat) ** 2 +
+                (df[lon_col] - causeway_bay_lon) ** 2
+            )
+
+            nearest = df.loc[
+                df["distance"].idxmin()
+            ]
+
+            target_lat = nearest[lat_col]
+            target_lon = nearest[lon_col]
+
+            forecast = df[
+                (df[lat_col] == target_lat)
+                &
+                (df[lon_col] == target_lon)
+            ].copy()
+
+            forecast = forecast.sort_values(
+                by=df.columns[3:6].tolist()
+            )
+
+            forecast = forecast.head(4)
+
+            for _, row in forecast.iterrows():
+
+                hh = int(row.iloc[3])
+                mm = int(row.iloc[4])
+
+                rain_mm = float(
+                    row[rain_col]
+                )
+
+                st.write(
+                    f"{hh:02d}:{mm:02d}  {rain_text(rain_mm)}"
+                )
+
+        except Exception as e:
+
+            st.error(
+                f"Rainfall Error: {e}"
+            )
+
+        # ==================================
+        # WEATHER WARNINGS
+        # ==================================
+
+        warn_url = (
+            "https://data.weather.gov.hk/"
+            "weatherAPI/opendata/weather.php"
+            "?dataType=warnsum&lang=tc"
+        )
+
+        warn_data = requests.get(
+            warn_url,
+            timeout=10
+        ).json()
+
+        code_map = {
+
+            "WHOT": "🔥 酷熱天氣",
+
+            "WRAINY": "🟡 黃色暴雨",
+
+            "WRAINR": "🔴 紅色暴雨",
+
+            "WRAINB": "⚫ 黑色暴雨",
+
+            "WTS": "⛈ 雷暴",
+
+            "WTCSGNL1": "🌀 1號風球",
+
+            "WTCSGNL3": "🌀 3號風球",
+
+            "WTCSGNL8": "🌀 8號風球"
+        }
+
+        warnings = []
+
+        for code in warn_data.keys():
+
+            if code in code_map:
+
+                warnings.append(
+                    code_map[code]
+                )
+
+        if warnings:
+
+            st.subheader("⚠ 天氣警告")
+
+            for w in warnings:
+
+                st.write(w)
+
+        # ==================================
+        # ADVICE
+        # ==================================
+
+        st.subheader("🚶 出門建議")
+
+        advice = []
+
+        if feels_like >= 33:
+
+            advice.append(
+                "🔥 天氣炎熱"
+            )
+
+        if (
+            "WRAINY" in warn_data or
+            "WRAINR" in warn_data or
+            "WRAINB" in warn_data
+        ):
+
+            advice.append(
+                "☂ 帶雨傘"
+            )
+
+        if not advice:
+
+            advice.append(
+                "✅ 天氣正常"
+            )
+
+        for item in advice:
+
+            st.write(item)
+
+    except Exception as e:
+
+        st.error(
+            f"天氣資料錯誤: {e}"
+        )
+
+# ==================================
+# Footer
+# ==================================
+
+st.divider()
+
+st.write(
+    hk_now.strftime(
+        "%Y-%m-%d %H:%M:%S HKT"
+    )
+)
