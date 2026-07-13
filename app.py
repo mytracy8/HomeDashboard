@@ -1,16 +1,22 @@
 import streamlit as st
 import requests
+import pandas as pd
+
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from streamlit_autorefresh import st_autorefresh
 
 # ==================================
-# 自動更新
+# Auto Refresh
 # ==================================
 
-st_autorefresh(interval=30000, key="refresh")
+st_autorefresh(
+    interval=30000,
+    key="refresh"
+)
 
 # ==================================
-# 頁面設定
+# Page Config
 # ==================================
 
 st.set_page_config(
@@ -20,26 +26,54 @@ st.set_page_config(
 )
 
 # ==================================
-# 標題
+# Hong Kong Time
+# ==================================
+
+hk_now = datetime.now(
+    ZoneInfo("Asia/Hong_Kong")
+)
+
+# ==================================
+# Helper
+# ==================================
+
+def rain_text(mm):
+
+    if mm <= 0:
+        return "無降雨"
+
+    elif mm < 0.5:
+        return "微雨"
+
+    elif mm < 2:
+        return "小雨"
+
+    elif mm < 10:
+        return "中雨"
+
+    else:
+        return "大雨"
+
+
+# ==================================
+# Title
 # ==================================
 
 st.title("🏠 Home Dashboard")
 
-now = datetime.now().astimezone()
-
 # ==================================
-# 左右版面
+# Layout
 # ==================================
 
 col1, col2 = st.columns(2)
 
 # ==================================
-# 巴士區
+# BUS
 # ==================================
 
 with col1:
 
-    st.subheader("🚌 Citybus 99")
+    st.header("🚌 Citybus 99")
 
     try:
 
@@ -55,7 +89,7 @@ with col1:
 
         buses = bus_data["data"][:3]
 
-        for i, bus in enumerate(buses, start=1):
+        for bus in buses:
 
             if not bus["eta"]:
                 continue
@@ -65,19 +99,14 @@ with col1:
             )
 
             mins = int(
-                (eta - now).total_seconds()/60
+                (eta - hk_now).total_seconds() / 60
             )
 
             if mins < 0:
                 mins = 0
 
-            st.metric(
-                label=f"第{i}班 ➜ {bus['dest_tc']}",
-                value=f"{mins} 分鐘"
-            )
-
-            st.caption(
-                eta.strftime("%H:%M:%S")
+            st.write(
+                f"🚌 {mins} 分鐘"
             )
 
     except:
@@ -85,12 +114,12 @@ with col1:
         st.error("無法取得巴士資料")
 
 # ==================================
-# 銅鑼灣天氣
+# WEATHER
 # ==================================
 
 with col2:
 
-    st.subheader("📍 銅鑼灣")
+    st.header("📍 銅鑼灣")
 
     try:
 
@@ -105,7 +134,16 @@ with col2:
             timeout=10
         ).json()
 
-        temp = weather["temperature"]["data"][1]["value"]
+        # 跑馬地最接近銅鑼灣
+
+        temp = None
+
+        for station in weather["temperature"]["data"]:
+
+            if station["place"] == "跑馬地":
+
+                temp = station["value"]
+                break
 
         humidity = weather["humidity"]["data"][0]["value"]
 
@@ -114,108 +152,169 @@ with col2:
             1
         )
 
-        st.metric(
-            "🌡 氣溫",
-            f"{temp}°C"
+        st.write(f"🌡 {temp}°C")
+        st.write(f"🥵 {feels_like}°C")
+        st.write(f"💧 {humidity}%")
+
+        # ==========================
+        # Rainfall Nowcast
+        # ==========================
+
+        st.subheader("☂ 未來兩小時")
+
+        try:
+
+            csv_url = (
+                "https://data.weather.gov.hk/"
+                "weatherAPI/hko_data/csdi/dataset/"
+                "gridded_rainfall_nowcast.csv"
+            )
+
+            df = pd.read_csv(csv_url)
+
+            lat_col = df.columns[8]
+            lon_col = df.columns[9]
+            rain_col = df.columns[7]
+
+            causeway_bay_lat = 22.2803
+            causeway_bay_lon = 114.1849
+
+            df["distance"] = (
+                (df[lat_col] - causeway_bay_lat) ** 2 +
+                (df[lon_col] - causeway_bay_lon) ** 2
+            )
+
+            nearest = df.sort_values(
+                "distance"
+            )
+
+            nearest_point = nearest.iloc[0]
+
+            point_lat = nearest_point[lat_col]
+            point_lon = nearest_point[lon_col]
+
+            rain_forecast = df[
+                (df[lat_col] == point_lat)
+                &
+                (df[lon_col] == point_lon)
+            ].head(4)
+
+            for _, row in rain_forecast.iterrows():
+
+                hh = int(row.iloc[3])
+                mm = int(row.iloc[4])
+
+                rain_mm = float(
+                    row[rain_col]
+                )
+
+                st.write(
+                    f"{hh:02d}:{mm:02d}"
+                )
+
+                st.write(
+                    rain_text(rain_mm)
+                )
+
+        except:
+
+            st.write("無法取得降雨預報")
+
+        # ==========================
+        # Warning
+        # ==========================
+
+        warning_text = []
+
+        warn_url = (
+            "https://data.weather.gov.hk/"
+            "weatherAPI/opendata/weather.php"
+            "?dataType=warnsum&lang=tc"
         )
 
-        st.metric(
-            "🥵 體感",
-            f"{feels_like}°C"
-        )
+        warn_data = requests.get(
+            warn_url,
+            timeout=10
+        ).json()
 
-        st.metric(
-            "💧 濕度",
-            f"{humidity}%"
-        )
+        code_map = {
 
-        # ======================
-        # 降雨機率
-        # ======================
+            "WHOT": "🔥 酷熱天氣",
 
-        if humidity >= 90:
-            rain_prob = 80
-        elif humidity >= 85:
-            rain_prob = 60
-        elif humidity >= 75:
-            rain_prob = 40
-        else:
-            rain_prob = 20
+            "WRAINY": "🟡 黃色暴雨",
 
-        st.metric(
-            "☂ 降雨機率",
-            f"{rain_prob}%"
-        )
+            "WRAINR": "🔴 紅色暴雨",
 
-        # ======================
-        # 天氣警告
-        # ======================
+            "WRAINB": "⚫ 黑色暴雨",
 
-        warnings = weather.get(
-            "warningMessage",
-            []
-        )
+            "WTS": "⛈ 雷暴",
 
-        warning_list = []
+            "WTCSGNL1": "🌀 1號風球",
 
-        for w in warnings:
+            "WTCSGNL3": "🌀 3號風球",
 
-            if "黃色" in w:
-                warning_list.append("🟡 黃色暴雨")
+            "WTCSGNL8": "🌀 8號風球"
+        }
 
-            elif "紅色" in w:
-                warning_list.append("🔴 紅色暴雨")
+        for code in warn_data.keys():
 
-            elif "黑色" in w:
-                warning_list.append("⚫ 黑色暴雨")
+            if code in code_map:
 
-            elif "雷暴" in w:
-                warning_list.append("⛈ 雷暴")
+                warning_text.append(
+                    code_map[code]
+                )
 
-            elif "一號" in w:
-                warning_list.append("🌀 1號風球")
+        if warning_text:
 
-            elif "三號" in w:
-                warning_list.append("🌀 3號風球")
+            st.subheader("⚠ 天氣警告")
 
-            elif "八號" in w:
-                warning_list.append("🌀 8號風球")
+            for item in warning_text:
 
-        warning_list = list(set(warning_list))
+                st.write(item)
 
-        if warning_list:
+        # ==========================
+        # Advice
+        # ==========================
 
-            st.markdown("### ⚠ 天氣警告")
-
-            for item in warning_list:
-                st.error(item)
-
-        # ======================
-        # 出門建議
-        # ======================
+        st.subheader("🚶 出門建議")
 
         advice = []
 
-        if rain_prob >= 50:
-            advice.append("☂ 帶雨傘")
-
         if feels_like >= 33:
-            advice.append("🔥 天氣炎熱")
 
-        if humidity >= 85:
-            advice.append("💦 悶熱")
+            advice.append(
+                "🔥 天氣炎熱"
+            )
 
-        if advice:
+        has_rain = False
 
-            st.markdown("### 🚶 出門建議")
+        try:
 
-            for item in advice:
-                st.write(item)
+            for _, row in rain_forecast.iterrows():
 
-        else:
+                if float(row[rain_col]) > 0:
 
-            st.markdown("### 🚶 出門建議")
-            st.write("✅ 天氣正常")
+                    has_rain = True
+                    break
+
+        except:
+            pass
+
+        if has_rain:
+
+            advice.append(
+                "☂ 帶雨傘"
+            )
+
+        if not advice:
+
+            advice.append(
+                "✅ 天氣正常"
+            )
+
+        for item in advice:
+
+            st.write(item)
 
     except Exception:
 
@@ -228,9 +327,7 @@ with col2:
 st.divider()
 
 st.write(
-    f"🕒 {now.strftime('%Y-%m-%d %H:%M:%S')}"
-)
-
-st.caption(
-    "資料來源：Citybus API、香港天文台"
+    hk_now.strftime(
+        "%Y-%m-%d %H:%M:%S HKT"
+    )
 )
