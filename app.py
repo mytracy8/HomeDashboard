@@ -1,24 +1,13 @@
 import streamlit as st
 import requests
-import pandas as pd
+import zipfile
 import io
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from streamlit_autorefresh import st_autorefresh
 
-# ==================================
-# Auto Refresh
-# ==================================
-
-st_autorefresh(
-    interval=30000,
-    key="refresh"
-)
-
-# ==================================
-# Page Config
-# ==================================
+st_autorefresh(interval=30000, key="refresh")
 
 st.set_page_config(
     page_title="Home Dashboard",
@@ -26,29 +15,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==================================
-# HK Time
-# ==================================
-
 hk_now = datetime.now(
     ZoneInfo("Asia/Hong_Kong")
 )
 
-# ==================================
-# Title
-# ==================================
-
 st.title("🏠 Home Dashboard")
-
-# ==================================
-# Layout
-# ==================================
 
 col1, col2 = st.columns(2)
 
-# ==================================
+# =====================
 # BUS
-# ==================================
+# =====================
 
 with col1:
 
@@ -56,19 +33,14 @@ with col1:
 
     try:
 
-        BUS_URL = (
+        url = (
             "https://rt.data.gov.hk/v2/transport/"
             "citybus/eta/CTB/002212/99"
         )
 
-        bus_data = requests.get(
-            BUS_URL,
-            timeout=10
-        ).json()
+        data = requests.get(url, timeout=10).json()
 
-        buses = bus_data["data"][:3]
-
-        for bus in buses:
+        for bus in data["data"][:3]:
 
             if not bus["eta"]:
                 continue
@@ -85,18 +57,16 @@ with col1:
                 mins = 0
 
             st.write(
-                f"🚌 {mins} 分鐘 ({eta.strftime('%H:%M')})"
+                f"{mins} 分鐘 ({eta.strftime('%H:%M')})"
             )
 
     except Exception as e:
 
-        st.error(
-            f"巴士資料錯誤: {e}"
-        )
+        st.error(e)
 
-# ==================================
+# =====================
 # WEATHER
-# ==================================
+# =====================
 
 with col2:
 
@@ -104,15 +74,8 @@ with col2:
 
     try:
 
-        weather_url = (
-            "https://data.weather.gov.hk/"
-            "weatherAPI/opendata/weather.php"
-            "?dataType=rhrread&lang=tc"
-        )
-
         weather = requests.get(
-            weather_url,
-            timeout=10
+            "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc"
         ).json()
 
         temp = None
@@ -135,22 +98,18 @@ with col2:
         st.write(f"🥵 {feels_like}°C")
         st.write(f"💧 {humidity}%")
 
-        # ==================================
-        # Rainfall Debug
-        # ==================================
-
         st.subheader("☂ 未來兩小時")
 
         try:
 
-            csv_url = (
+            zip_url = (
                 "https://data.weather.gov.hk/"
                 "weatherAPI/hko_data/csdi/dataset/"
-                "gridded_rainfall_nowcast.csv"
+                "gridded_rainfall_nowcast.zip"
             )
 
             r = requests.get(
-                csv_url,
+                zip_url,
                 timeout=30
             )
 
@@ -158,19 +117,15 @@ with col2:
                 f"HTTP Status: {r.status_code}"
             )
 
-            r.raise_for_status()
-
-            df = pd.read_csv(
-                io.StringIO(r.text)
+            z = zipfile.ZipFile(
+                io.BytesIO(r.content)
             )
 
-            st.write(
-                f"Rows: {len(df)}"
-            )
+            st.write("ZIP內容:")
 
-            st.success(
-                "Rainfall Dataset 成功讀取"
-            )
+            for name in z.namelist():
+
+                st.write(name)
 
         except Exception as e:
 
@@ -178,91 +133,9 @@ with col2:
                 f"Rainfall Error: {e}"
             )
 
-        # ==================================
-        # Warning
-        # ==================================
-
-        warn_url = (
-            "https://data.weather.gov.hk/"
-            "weatherAPI/opendata/weather.php"
-            "?dataType=warnsum&lang=tc"
-        )
-
-        warn_data = requests.get(
-            warn_url,
-            timeout=10
-        ).json()
-
-        code_map = {
-
-            "WHOT": "🔥 酷熱天氣",
-
-            "WRAINY": "🟡 黃色暴雨",
-
-            "WRAINR": "🔴 紅色暴雨",
-
-            "WRAINB": "⚫ 黑色暴雨",
-
-            "WTS": "⛈ 雷暴",
-
-            "WTCSGNL1": "🌀 1號風球",
-
-            "WTCSGNL3": "🌀 3號風球",
-
-            "WTCSGNL8": "🌀 8號風球"
-        }
-
-        warnings = []
-
-        for code in warn_data.keys():
-
-            if code in code_map:
-
-                warnings.append(
-                    code_map[code]
-                )
-
-        if warnings:
-
-            st.subheader("⚠ 天氣警告")
-
-            for w in warnings:
-
-                st.write(w)
-
-        # ==================================
-        # Advice
-        # ==================================
-
-        st.subheader("🚶 出門建議")
-
-        advice = []
-
-        if feels_like >= 33:
-
-            advice.append(
-                "🔥 天氣炎熱"
-            )
-
-        if not advice:
-
-            advice.append(
-                "✅ 天氣正常"
-            )
-
-        for item in advice:
-
-            st.write(item)
-
     except Exception as e:
 
-        st.error(
-            f"天氣資料錯誤: {e}"
-        )
-
-# ==================================
-# Footer
-# ==================================
+        st.error(e)
 
 st.divider()
 
