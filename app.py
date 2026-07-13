@@ -8,7 +8,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from streamlit_autorefresh import st_autorefresh
 
-
 # ==================================
 # Auto Refresh
 # ==================================
@@ -23,9 +22,49 @@ st_autorefresh(
 # ==================================
 
 st.set_page_config(
-    page_title="Home Dashboard",
-    page_icon="🏠",
+    page_title="Today",
+    page_icon="☀",
     layout="wide"
+)
+
+# ==================================
+# Custom CSS
+# ==================================
+
+st.markdown(
+    """
+    <style>
+
+    .main-title {
+        font-size:48px;
+        font-weight:700;
+        margin-bottom:20px;
+    }
+
+    .bus-text {
+        font-size:28px;
+        font-weight:600;
+        line-height:1.3;
+    }
+
+    .weather-text {
+        font-size:24px;
+        line-height:1.4;
+    }
+
+    .rain-text {
+        font-size:22px;
+        line-height:1.6;
+    }
+
+    .footer-text {
+        color:gray;
+        font-size:14px;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
 # ==================================
@@ -57,12 +96,14 @@ def rain_text(mm):
     else:
         return "大雨"
 
-
 # ==================================
 # Title
 # ==================================
 
-st.title("🏠 Home Dashboard")
+st.markdown(
+    '<div class="main-title">☀ Today</div>',
+    unsafe_allow_html=True
+)
 
 # ==================================
 # Layout
@@ -76,7 +117,7 @@ col1, col2 = st.columns(2)
 
 with col1:
 
-    st.header("🚌 Citybus 99")
+    st.markdown("## 🚌 Citybus 99")
 
     try:
 
@@ -108,8 +149,13 @@ with col1:
             if mins < 0:
                 mins = 0
 
-            st.write(
-                f"{mins} 分鐘 ({eta.strftime('%H:%M')})"
+            st.markdown(
+                f"""
+                <div class="bus-text">
+                {mins}分鐘 ({eta.strftime('%H:%M')})
+                </div>
+                """,
+                unsafe_allow_html=True
             )
 
     except Exception as e:
@@ -118,14 +164,13 @@ with col1:
             f"巴士資料錯誤: {e}"
         )
 
-
 # ==================================
 # WEATHER
 # ==================================
 
 with col2:
 
-    st.header("📍 銅鑼灣")
+    st.markdown("## 📍 銅鑼灣天氣")
 
     try:
 
@@ -156,15 +201,22 @@ with col2:
             1
         )
 
-        st.write(f"🌡 {temp}°C")
-        st.write(f"🥵 {feels_like}°C")
-        st.write(f"💧 {humidity}%")
+        st.markdown(
+            f"""
+            <div class="weather-text">
+            🌡 {temp}°C<br>
+            🥵 體感 {feels_like}°C<br>
+            💧 {humidity}%
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         # ==================================
-        # RAINFALL NOWCAST
+        # Rainfall
         # ==================================
 
-        st.subheader("☂ 未來兩小時")
+        st.markdown("## ☂ 銅鑼灣降雨")
 
         try:
 
@@ -231,8 +283,13 @@ with col2:
                     row[rain_col]
                 )
 
-                st.write(
-                    f"{hh:02d}:{mm:02d}  {rain_text(rain_mm)}"
+                st.markdown(
+                    f"""
+                    <div class="rain-text">
+                    {hh:02d}:{mm:02d}　{rain_text(rain_mm)}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
                 )
 
         except Exception as e:
@@ -242,7 +299,7 @@ with col2:
             )
 
         # ==================================
-        # WEATHER WARNINGS
+        # Warning
         # ==================================
 
         warn_url = (
@@ -287,17 +344,17 @@ with col2:
 
         if warnings:
 
-            st.subheader("⚠ 天氣警告")
+            st.markdown("## ⚠ 天氣警告")
 
             for w in warnings:
 
                 st.write(w)
 
         # ==================================
-        # ADVICE
+        # Advice
         # ==================================
 
-        st.subheader("🚶 出門建議")
+        st.markdown("## 🚶 出門建議")
 
         advice = []
 
@@ -339,8 +396,11 @@ with col2:
 
 st.divider()
 
-st.write(
-    hk_now.strftime(
-        "%Y-%m-%d %H:%M:%S HKT"
-    )
+st.markdown(
+    f"""
+    <div class="footer-text">
+    {hk_now.strftime('%H:%M HKT')}
+    </div>
+    """,
+    unsafe_allow_html=True
 )
