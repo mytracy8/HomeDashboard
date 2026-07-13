@@ -105,3 +105,169 @@ with col2:
     try:
 
         weather_url = (
+            "https://data.weather.gov.hk/"
+            "weatherAPI/opendata/weather.php"
+            "?dataType=rhrread&lang=tc"
+        )
+
+        weather = requests.get(
+            weather_url,
+            timeout=10
+        ).json()
+
+        temp = None
+
+        for station in weather["temperature"]["data"]:
+
+            if station["place"] == "跑馬地":
+
+                temp = station["value"]
+                break
+
+        humidity = weather["humidity"]["data"][0]["value"]
+
+        feels_like = round(
+            temp + ((humidity - 40) / 10),
+            1
+        )
+
+        st.write(f"🌡 {temp}°C")
+        st.write(f"🥵 {feels_like}°C")
+        st.write(f"💧 {humidity}%")
+
+        # ==================================
+        # Rainfall Debug
+        # ==================================
+
+        st.subheader("☂ 未來兩小時")
+
+        try:
+
+            csv_url = (
+                "https://data.weather.gov.hk/"
+                "weatherAPI/hko_data/csdi/dataset/"
+                "gridded_rainfall_nowcast.csv"
+            )
+
+            r = requests.get(
+                csv_url,
+                timeout=30
+            )
+
+            st.write(
+                f"HTTP Status: {r.status_code}"
+            )
+
+            r.raise_for_status()
+
+            df = pd.read_csv(
+                io.StringIO(r.text)
+            )
+
+            st.write(
+                f"Rows: {len(df)}"
+            )
+
+            st.success(
+                "Rainfall Dataset 成功讀取"
+            )
+
+        except Exception as e:
+
+            st.error(
+                f"Rainfall Error: {e}"
+            )
+
+        # ==================================
+        # Warning
+        # ==================================
+
+        warn_url = (
+            "https://data.weather.gov.hk/"
+            "weatherAPI/opendata/weather.php"
+            "?dataType=warnsum&lang=tc"
+        )
+
+        warn_data = requests.get(
+            warn_url,
+            timeout=10
+        ).json()
+
+        code_map = {
+
+            "WHOT": "🔥 酷熱天氣",
+
+            "WRAINY": "🟡 黃色暴雨",
+
+            "WRAINR": "🔴 紅色暴雨",
+
+            "WRAINB": "⚫ 黑色暴雨",
+
+            "WTS": "⛈ 雷暴",
+
+            "WTCSGNL1": "🌀 1號風球",
+
+            "WTCSGNL3": "🌀 3號風球",
+
+            "WTCSGNL8": "🌀 8號風球"
+        }
+
+        warnings = []
+
+        for code in warn_data.keys():
+
+            if code in code_map:
+
+                warnings.append(
+                    code_map[code]
+                )
+
+        if warnings:
+
+            st.subheader("⚠ 天氣警告")
+
+            for w in warnings:
+
+                st.write(w)
+
+        # ==================================
+        # Advice
+        # ==================================
+
+        st.subheader("🚶 出門建議")
+
+        advice = []
+
+        if feels_like >= 33:
+
+            advice.append(
+                "🔥 天氣炎熱"
+            )
+
+        if not advice:
+
+            advice.append(
+                "✅ 天氣正常"
+            )
+
+        for item in advice:
+
+            st.write(item)
+
+    except Exception as e:
+
+        st.error(
+            f"天氣資料錯誤: {e}"
+        )
+
+# ==================================
+# Footer
+# ==================================
+
+st.divider()
+
+st.write(
+    hk_now.strftime(
+        "%Y-%m-%d %H:%M:%S HKT"
+    )
+)
