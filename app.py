@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import pandas as pd
 import zipfile
 import io
 
@@ -7,7 +8,19 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from streamlit_autorefresh import st_autorefresh
 
-st_autorefresh(interval=30000, key="refresh")
+
+# ==================================
+# Auto Refresh
+# ==================================
+
+st_autorefresh(
+    interval=30000,
+    key="refresh"
+)
+
+# ==================================
+# Page Config
+# ==================================
 
 st.set_page_config(
     page_title="Home Dashboard",
@@ -15,17 +28,51 @@ st.set_page_config(
     layout="wide"
 )
 
+# ==================================
+# HK Time
+# ==================================
+
 hk_now = datetime.now(
     ZoneInfo("Asia/Hong_Kong")
 )
 
+# ==================================
+# Helpers
+# ==================================
+
+def rain_text(mm):
+
+    if mm <= 0:
+        return "無降雨"
+
+    elif mm < 0.5:
+        return "微雨"
+
+    elif mm < 2:
+        return "小雨"
+
+    elif mm < 10:
+        return "中雨"
+
+    else:
+        return "大雨"
+
+
+# ==================================
+# Title
+# ==================================
+
 st.title("🏠 Home Dashboard")
+
+# ==================================
+# Layout
+# ==================================
 
 col1, col2 = st.columns(2)
 
-# =====================
+# ==================================
 # BUS
-# =====================
+# ==================================
 
 with col1:
 
@@ -33,14 +80,19 @@ with col1:
 
     try:
 
-        url = (
+        bus_url = (
             "https://rt.data.gov.hk/v2/transport/"
             "citybus/eta/CTB/002212/99"
         )
 
-        data = requests.get(url, timeout=10).json()
+        bus_data = requests.get(
+            bus_url,
+            timeout=10
+        ).json()
 
-        for bus in data["data"][:3]:
+        buses = bus_data["data"][:3]
+
+        for bus in buses:
 
             if not bus["eta"]:
                 continue
@@ -62,11 +114,14 @@ with col1:
 
     except Exception as e:
 
-        st.error(e)
+        st.error(
+            f"巴士資料錯誤: {e}"
+        )
 
-# =====================
+
+# ==================================
 # WEATHER
-# =====================
+# ==================================
 
 with col2:
 
@@ -74,8 +129,15 @@ with col2:
 
     try:
 
+        weather_url = (
+            "https://data.weather.gov.hk/"
+            "weatherAPI/opendata/weather.php"
+            "?dataType=rhrread&lang=tc"
+        )
+
         weather = requests.get(
-            "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc"
+            weather_url,
+            timeout=10
         ).json()
 
         temp = None
@@ -98,6 +160,10 @@ with col2:
         st.write(f"🥵 {feels_like}°C")
         st.write(f"💧 {humidity}%")
 
+        # ==================================
+        # RAINFALL NOWCAST
+        # ==================================
+
         st.subheader("☂ 未來兩小時")
 
         try:
@@ -108,39 +174,21 @@ with col2:
                 "gridded_rainfall_nowcast.zip"
             )
 
-            r = requests.get(
+            response = requests.get(
                 zip_url,
                 timeout=30
             )
 
-            st.write(
-                f"HTTP Status: {r.status_code}"
-            )
+            response.raise_for_status()
 
             z = zipfile.ZipFile(
-                io.BytesIO(r.content)
+                io.BytesIO(response.content)
             )
 
-            st.write("ZIP內容:")
+            csv_name = z.namelist()[0]
 
-            for name in z.namelist():
+            with z.open(csv_name) as csv_file:
 
-                st.write(name)
+                df = pd.read_csv(csv_file)
 
-        except Exception as e:
-
-            st.error(
-                f"Rainfall Error: {e}"
-            )
-
-    except Exception as e:
-
-        st.error(e)
-
-st.divider()
-
-st.write(
-    hk_now.strftime(
-        "%Y-%m-%d %H:%M:%S HKT"
-    )
-)
+            lat_col = df.columns[8]
