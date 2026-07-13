@@ -6,16 +6,6 @@ import io
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from streamlit_autorefresh import st_autorefresh
-
-# ==================================
-# Auto Refresh
-# ==================================
-
-st_autorefresh(
-    interval=30000,
-    key="refresh"
-)
 
 # ==================================
 # Page Config
@@ -31,41 +21,38 @@ st.set_page_config(
 # Custom CSS
 # ==================================
 
-st.markdown(
-    """
-    <style>
+st.markdown("""
+<style>
 
-    .main-title {
-        font-size:48px;
-        font-weight:700;
-        margin-bottom:20px;
-    }
+.main-title {
+    font-size:48px;
+    font-weight:700;
+    margin-bottom:20px;
+}
 
-    .bus-text {
-        font-size:28px;
-        font-weight:600;
-        line-height:1.3;
-    }
+.bus-text {
+    font-size:28px;
+    font-weight:600;
+    line-height:1.3;
+}
 
-    .weather-text {
-        font-size:24px;
-        line-height:1.4;
-    }
+.weather-text {
+    font-size:24px;
+    line-height:1.4;
+}
 
-    .rain-text {
-        font-size:22px;
-        line-height:1.6;
-    }
+.rain-text {
+    font-size:22px;
+    line-height:1.6;
+}
 
-    .footer-text {
-        color:gray;
-        font-size:14px;
-    }
+.footer-text {
+    color:gray;
+    font-size:14px;
+}
 
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+</style>
+""", unsafe_allow_html=True)
 
 # ==================================
 # HK Time
@@ -160,9 +147,7 @@ with col1:
 
     except Exception as e:
 
-        st.error(
-            f"巴士資料錯誤: {e}"
-        )
+        st.error(f"巴士資料錯誤: {e}")
 
 # ==================================
 # WEATHER
@@ -263,14 +248,9 @@ with col2:
             target_lon = nearest[lon_col]
 
             forecast = df[
-                (df[lat_col] == target_lat)
-                &
+                (df[lat_col] == target_lat) &
                 (df[lon_col] == target_lon)
             ].copy()
-
-            forecast = forecast.sort_values(
-                by=df.columns[3:6].tolist()
-            )
 
             forecast = forecast.head(4)
 
@@ -338,9 +318,7 @@ with col2:
 
             if code in code_map:
 
-                warnings.append(
-                    code_map[code]
-                )
+                warnings.append(code_map[code])
 
         if warnings:
 
