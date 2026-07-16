@@ -232,6 +232,11 @@ with col2:
             lon_col = df.columns[9]
             rain_col = df.columns[7]
 
+
+            end_hour_col = df.columns[3]
+            end_min_col = df.columns[4]
+
+            
             causeway_bay_lat = 22.2803
             causeway_bay_lon = 114.1849
 
@@ -240,24 +245,25 @@ with col2:
                 (df[lon_col] - causeway_bay_lon) ** 2
             )
 
-            nearest = df.loc[
-                df["distance"].idxmin()
-            ]
+            
+        nearest_row = df.loc[df["distance"].idxmin()]
 
-            target_lat = nearest[lat_col]
-            target_lon = nearest[lon_col]
+        target_lat = nearest_row[lat_col]
+        target_lon = nearest_row[lon_col]
 
-            forecast = df[
-                (df[lat_col] == target_lat) &
-                (df[lon_col] == target_lon)
-            ].copy()
+        forecast = df[
+            (df[lat_col] == target_lat)
+            &
+            (df[lon_col] == target_lon)
+        ]
+
 
             forecast = forecast.head(4)
 
             for _, row in forecast.iterrows():
 
-                hh = int(row.iloc[3])
-                mm = int(row.iloc[4])
+                hh = int(row[end_hour_col])
+                mm = int(row[end_min_col])
 
                 rain_mm = float(
                     row[rain_col]
