@@ -197,92 +197,109 @@ with col2:
             unsafe_allow_html=True
         )
 
-        # ==================================
-        # Rainfall
-        # ==================================
+# ==================================
+# Rainfall
+# ==================================
 
-        st.markdown("## ☂ 銅鑼灣降雨")
+st.markdown("## ☂ 銅鑼灣降雨")
 
-        try:
+try:
 
-            zip_url = (
-                "https://data.weather.gov.hk/"
-                "weatherAPI/hko_data/csdi/dataset/"
-                "gridded_rainfall_nowcast.zip"
-            )
+    zip_url = (
+        "https://data.weather.gov.hk/"
+        "weatherAPI/hko_data/csdi/dataset/"
+        "gridded_rainfall_nowcast.zip"
+    )
 
-            response = requests.get(
-                zip_url,
-                timeout=30
-            )
+    response = requests.get(
+        zip_url,
+        timeout=30
+    )
 
-            response.raise_for_status()
+    response.raise_for_status()
 
-            z = zipfile.ZipFile(
-                io.BytesIO(response.content)
-            )
+    z = zipfile.ZipFile(
+        io.BytesIO(response.content)
+    )
 
-            csv_name = z.namelist()[0]
+    csv_name = z.namelist()[0]
 
-            with z.open(csv_name) as csv_file:
+    with z.open(csv_name) as csv_file:
 
-                df = pd.read_csv(csv_file)
+        df = pd.read_csv(csv_file)
 
-            lat_col = df.columns[8]
-            lon_col = df.columns[9]
-            rain_col = df.columns[7]
+    rain_col = df.columns[7]
+    lat_col = df.columns[8]
+    lon_col = df.columns[9]
 
+    end_hour_col = df.columns[3]
+    end_min_col = df.columns[4]
 
-            end_hour_col = df.columns[3]
-            end_min_col = df.columns[4]
+    causeway_bay_lat = 22.2803
+    causeway_bay_lon = 114.1849
 
-            
-            causeway_bay_lat = 22.2803
-            causeway_bay_lon = 114.1849
+    df["distance"] = (
+        (df[lat_col] - causeway_bay_lat) ** 2
+        +
+        (df[lon_col] - causeway_bay_lon) ** 2
+    )
 
-            df["distance"] = (
-                (df[lat_col] - causeway_bay_lat) ** 2 +
-                (df[lon_col] - causeway_bay_lon) ** 2
-            )
+    nearest_row = df.loc[
+        df["distance"].idxmin()
+    ]
 
-            
-        nearest_row = df.loc[df["distance"].idxmin()]
+    target_lat = nearest_row[lat_col]
+    target_lon = nearest_row[lon_col]
 
-        target_lat = nearest_row[lat_col]
-        target_lon = nearest_row[lon_col]
+    forecast = df[
+        (df[lat_col] == target_lat)
+        &
+        (df[lon_col] == target_lon)
+    ].copy()
 
-        forecast = df[
-            (df[lat_col] == target_lat)
-            &
-            (df[lon_col] == target_lon)
-        ]
+    forecast["forecast_time"] = (
+        forecast[end_hour_col]
+        .astype(int)
+        .astype(str)
+        .str.zfill(2)
+        + ":"
+        +
+        forecast[end_min_col]
+        .astype(int)
+        .astype(str)
+        .str.zfill(2)
+    )
 
+    forecast = forecast.sort_values(
+        by=["forecast_time"]
+    )
 
-            forecast = forecast.head(4)
+    forecast = forecast.drop_duplicates(
+        subset=["forecast_time"]
+    )
 
-            for _, row in forecast.iterrows():
+    for _, row in forecast.iterrows():
 
-                hh = int(row[end_hour_col])
-                mm = int(row[end_min_col])
+        forecast_time = row["forecast_time"]
 
-                rain_mm = float(
-                    row[rain_col]
-                )
+        rain_mm = float(
+            row[rain_col]
+        )
 
-                st.markdown(
-                    f"""
-                    <div class="rain-text">
-                    {hh:02d}:{mm:02d}　{rain_text(rain_mm)}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+        st.markdown(
+            f"""
+            <div class="rain-text">
+            {forecast_time} {rain_text(rain_mm)}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        except Exception as e:
+except Exception as e:
 
-            st.error(
-                f"Rainfall Error: {e}"
-            )
+    st.error(
+        f"Rainfall Error: {e}"
+    )
 
         # ==================================
         # Warning
