@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==================================
-# Custom CSS
+# CSS
 # ==================================
 
 st.markdown("""
@@ -55,7 +55,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==================================
-# HK Time
+# Time
 # ==================================
 
 hk_now = datetime.now(
@@ -63,7 +63,7 @@ hk_now = datetime.now(
 )
 
 # ==================================
-# Helpers
+# Helper
 # ==================================
 
 def rain_text(mm):
@@ -99,7 +99,7 @@ st.markdown(
 col1, col2 = st.columns(2)
 
 # ==================================
-# BUS
+# Bus
 # ==================================
 
 with col1:
@@ -147,10 +147,12 @@ with col1:
 
     except Exception as e:
 
-        st.error(f"巴士資料錯誤: {e}")
+        st.error(
+            f"巴士資料錯誤: {e}"
+        )
 
 # ==================================
-# WEATHER
+# Weather
 # ==================================
 
 with col2:
@@ -248,9 +250,25 @@ with col2:
             target_lon = nearest[lon_col]
 
             forecast = df[
-                (df[lat_col] == target_lat) &
+                (df[lat_col] == target_lat)
+                &
                 (df[lon_col] == target_lon)
             ].copy()
+
+            forecast["forecast_time"] = (
+                forecast.iloc[:, 3]
+                .astype(str)
+                .str.zfill(2)
+                + ":"
+                +
+                forecast.iloc[:, 4]
+                .astype(str)
+                .str.zfill(2)
+            )
+
+            forecast = forecast.drop_duplicates(
+                subset=["forecast_time"]
+            )
 
             forecast = forecast.head(4)
 
@@ -266,7 +284,7 @@ with col2:
                 st.markdown(
                     f"""
                     <div class="rain-text">
-                    {hh:02d}:{mm:02d}　{rain_text(rain_mm)}
+                    {hh:02d}:{mm:02d} {rain_text(rain_mm)}
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -318,7 +336,9 @@ with col2:
 
             if code in code_map:
 
-                warnings.append(code_map[code])
+                warnings.append(
+                    code_map[code]
+                )
 
         if warnings:
 
@@ -327,40 +347,6 @@ with col2:
             for w in warnings:
 
                 st.write(w)
-
-        # ==================================
-        # Advice
-        # ==================================
-
-        st.markdown("## 🚶 出門建議")
-
-        advice = []
-
-        if feels_like >= 33:
-
-            advice.append(
-                "🔥 天氣炎熱"
-            )
-
-        if (
-            "WRAINY" in warn_data or
-            "WRAINR" in warn_data or
-            "WRAINB" in warn_data
-        ):
-
-            advice.append(
-                "☂ 帶雨傘"
-            )
-
-        if not advice:
-
-            advice.append(
-                "✅ 天氣正常"
-            )
-
-        for item in advice:
-
-            st.write(item)
 
     except Exception as e:
 
