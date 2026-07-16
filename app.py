@@ -199,7 +199,7 @@ with col2:
             unsafe_allow_html=True
         )
 
-       # ==================================
+# ==================================
 # Rainfall
 # ==================================
 
@@ -231,7 +231,6 @@ try:
         df = pd.read_csv(csv_file)
 
     # 正確欄位
-
     lat_col = df.columns[14]
     lon_col = df.columns[15]
     rain_col = df.columns[16]
@@ -243,7 +242,8 @@ try:
     causeway_bay_lon = 114.1849
 
     df["distance"] = (
-        (df[lat_col] - causeway_bay_lat) ** 2 +
+        (df[lat_col] - causeway_bay_lat) ** 2
+        +
         (df[lon_col] - causeway_bay_lon) ** 2
     )
 
@@ -276,23 +276,29 @@ try:
 
     forecast = forecast.head(4)
 
-    for _, row in forecast.iterrows():
+    if len(forecast) == 0:
 
-        hh = int(row[end_hour_col])
-        mm = int(row[end_min_col])
+        st.write("無降雨預報資料")
 
-        rain_mm = float(
-            row[rain_col]
-        )
+    else:
 
-        st.markdown(
-            f"""
-            <div class="rain-text">
-            {hh:02d}:{mm:02d} {rain_text(rain_mm)}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        for _, row in forecast.iterrows():
+
+            hh = int(row[end_hour_col])
+            mm = int(row[end_min_col])
+
+            rain_mm = float(
+                row[rain_col]
+            )
+
+            st.markdown(
+                f"""
+                <div class="rain-text">
+                {hh:02d}:{mm:02d} {rain_text(rain_mm)}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
 except Exception as e:
 
