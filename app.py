@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==================================
-# CSS
+# Custom CSS
 # ==================================
 
 st.markdown("""
@@ -55,7 +55,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==================================
-# Time
+# HK Time
 # ==================================
 
 hk_now = datetime.now(
@@ -63,7 +63,7 @@ hk_now = datetime.now(
 )
 
 # ==================================
-# Helper
+# Helpers
 # ==================================
 
 def rain_text(mm):
@@ -99,7 +99,7 @@ st.markdown(
 col1, col2 = st.columns(2)
 
 # ==================================
-# Bus
+# BUS
 # ==================================
 
 with col1:
@@ -147,12 +147,10 @@ with col1:
 
     except Exception as e:
 
-        st.error(
-            f"巴士資料錯誤: {e}"
-        )
+        st.error(f"巴士資料錯誤: {e}")
 
 # ==================================
-# Weather
+# WEATHER
 # ==================================
 
 with col2:
@@ -199,118 +197,86 @@ with col2:
             unsafe_allow_html=True
         )
 
-# ==================================
-# Rainfall
-# ==================================
+        # ==================================
+        # Rainfall
+        # ==================================
 
-st.markdown("## ☂ 銅鑼灣降雨")
+        st.markdown("## ☂ 銅鑼灣降雨")
 
-try:
+        try:
 
-    zip_url = (
-        "https://data.weather.gov.hk/"
-        "weatherAPI/hko_data/csdi/dataset/"
-        "gridded_rainfall_nowcast.zip"
-    )
-
-    response = requests.get(
-        zip_url,
-        timeout=30
-    )
-
-    response.raise_for_status()
-
-    z = zipfile.ZipFile(
-        io.BytesIO(response.content)
-    )
-
-    csv_name = z.namelist()[0]
-
-    with z.open(csv_name) as csv_file:
-
-        df = pd.read_csv(csv_file)
-
-    # 正確欄位
-    rain_col = df.columns[7]
-    lat_col = df.columns[8]
-    lon_col = df.columns[9]
-
-    end_hour_col = df.columns[3]
-    end_min_col = df.columns[4]
-
-    causeway_bay_lat = 22.2803
-    causeway_bay_lon = 114.1849
-
-    df["distance"] = (
-        (df[lat_col] - causeway_bay_lat) ** 2 +
-        (df[lon_col] - causeway_bay_lon) ** 2
-    )
-
-    # 取最近格點
-    nearest_row = df.loc[
-        df["distance"].idxmin()
-    ]
-
-    target_lat = nearest_row[lat_col]
-    target_lon = nearest_row[lon_col]
-
-    forecast = df[
-        (df[lat_col] == target_lat)
-        &
-        (df[lon_col] == target_lon)
-    ].copy()
-
-    forecast["forecast_time"] = (
-        forecast[end_hour_col]
-        .astype(int)
-        .astype(str)
-        .str.zfill(2)
-        + ":"
-        +
-        forecast[end_min_col]
-        .astype(int)
-        .astype(str)
-        .str.zfill(2)
-    )
-
-    forecast = forecast.sort_values(
-        by=[end_hour_col, end_min_col]
-    )
-
-    forecast = forecast.drop_duplicates(
-        subset=["forecast_time"]
-    )
-
-    forecast = forecast.head(4)
-
-    if len(forecast) == 0:
-
-        st.write("無降雨預報資料")
-
-    else:
-
-        for _, row in forecast.iterrows():
-
-            forecast_time = row["forecast_time"]
-
-            rain_mm = float(
-                row[rain_col]
+            zip_url = (
+                "https://data.weather.gov.hk/"
+                "weatherAPI/hko_data/csdi/dataset/"
+                "gridded_rainfall_nowcast.zip"
             )
 
-            st.markdown(
-                f"""
-                <div class="rain-text">
-                {forecast_time} {rain_text(rain_mm)}
-                </div>
-                """,
-                unsafe_allow_html=True
+            response = requests.get(
+                zip_url,
+                timeout=30
             )
 
-except Exception as e:
+            response.raise_for_status()
 
-    st.error(
-        f"Rainfall Error: {e}"
-    )
+            z = zipfile.ZipFile(
+                io.BytesIO(response.content)
+            )
+
+            csv_name = z.namelist()[0]
+
+            with z.open(csv_name) as csv_file:
+
+                df = pd.read_csv(csv_file)
+
+            lat_col = df.columns[8]
+            lon_col = df.columns[9]
+            rain_col = df.columns[7]
+
+            causeway_bay_lat = 22.2803
+            causeway_bay_lon = 114.1849
+
+            df["distance"] = (
+                (df[lat_col] - causeway_bay_lat) ** 2 +
+                (df[lon_col] - causeway_bay_lon) ** 2
+            )
+
+            nearest = df.loc[
+                df["distance"].idxmin()
+            ]
+
+            target_lat = nearest[lat_col]
+            target_lon = nearest[lon_col]
+
+            forecast = df[
+                (df[lat_col] == target_lat) &
+                (df[lon_col] == target_lon)
+            ].copy()
+
+            forecast = forecast.head(4)
+
+            for _, row in forecast.iterrows():
+
+                hh = int(row.iloc[3])
+                mm = int(row.iloc[4])
+
+                rain_mm = float(
+                    row[rain_col]
+                )
+
+                st.markdown(
+                    f"""
+                    <div class="rain-text">
+                    {hh:02d}:{mm:02d}　{rain_text(rain_mm)}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+        except Exception as e:
+
+            st.error(
+                f"Rainfall Error: {e}"
+            )
 
         # ==================================
         # Warning
@@ -352,9 +318,7 @@ except Exception as e:
 
             if code in code_map:
 
-                warnings.append(
-                    code_map[code]
-                )
+                warnings.append(code_map[code])
 
         if warnings:
 
@@ -363,6 +327,40 @@ except Exception as e:
             for w in warnings:
 
                 st.write(w)
+
+        # ==================================
+        # Advice
+        # ==================================
+
+        st.markdown("## 🚶 出門建議")
+
+        advice = []
+
+        if feels_like >= 33:
+
+            advice.append(
+                "🔥 天氣炎熱"
+            )
+
+        if (
+            "WRAINY" in warn_data or
+            "WRAINR" in warn_data or
+            "WRAINB" in warn_data
+        ):
+
+            advice.append(
+                "☂ 帶雨傘"
+            )
+
+        if not advice:
+
+            advice.append(
+                "✅ 天氣正常"
+            )
+
+        for item in advice:
+
+            st.write(item)
 
     except Exception as e:
 
