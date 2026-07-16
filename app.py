@@ -200,7 +200,7 @@ with col2:
         )
 
         # ==================================
-        # Rainfall
+        # Rainfall Debug
         # ==================================
 
         st.markdown("## ☂ 銅鑼灣降雨")
@@ -230,6 +230,12 @@ with col2:
 
                 df = pd.read_csv(csv_file)
 
+            st.markdown("### 🔍 CSV 欄位")
+
+            st.write(
+                list(df.columns)
+            )
+
             lat_col = df.columns[8]
             lon_col = df.columns[9]
             rain_col = df.columns[7]
@@ -249,52 +255,40 @@ with col2:
             target_lat = nearest[lat_col]
             target_lon = nearest[lon_col]
 
+            st.markdown("### 🔍 最近格點")
+
+            st.write(
+                f"Lat = {target_lat}"
+            )
+
+            st.write(
+                f"Lon = {target_lon}"
+            )
+
             forecast = df[
                 (df[lat_col] == target_lat)
                 &
                 (df[lon_col] == target_lon)
             ].copy()
 
-            forecast["forecast_time"] = (
-                forecast.iloc[:, 3]
-                .astype(str)
-                .str.zfill(2)
-                + ":"
-                +
-                forecast.iloc[:, 4]
-                .astype(str)
-                .str.zfill(2)
+            st.markdown("### 🔍 Forecast 總數")
+
+            st.write(
+                len(forecast)
             )
 
-            forecast = forecast.drop_duplicates(
-                subset=["forecast_time"]
+            st.markdown("### 🔍 Forecast 前20筆")
+
+            st.dataframe(
+                forecast.head(20)
             )
-
-            forecast = forecast.head(4)
-
-            for _, row in forecast.iterrows():
-
-                hh = int(row.iloc[3])
-                mm = int(row.iloc[4])
-
-                rain_mm = float(
-                    row[rain_col]
-                )
-
-                st.markdown(
-                    f"""
-                    <div class="rain-text">
-                    {hh:02d}:{mm:02d} {rain_text(rain_mm)}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
 
         except Exception as e:
 
             st.error(
                 f"Rainfall Error: {e}"
             )
+
 
         # ==================================
         # Warning
